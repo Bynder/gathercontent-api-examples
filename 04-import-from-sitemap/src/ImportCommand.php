@@ -29,15 +29,8 @@ class ImportCommand extends Command
 
         $io = new SymfonyStyle($input, $output);
 
-        // if not previously authenticated
-        $credentialsFileExists = file_exists('credentials');
-
-        if ($credentialsFileExists) {
-            list($username, $apiKey) = explode(':', file_get_contents('credentials'));
-        } else {
-            $username = $io->ask('What is your username?');
-            $apiKey   = $io->ask('What is your API key?');
-        }
+        $username = $io->ask('What is your username?');
+        $apiKey   = $io->ask('What is your API key?');
 
         $io->text('Validating username and API key...');
 
@@ -47,12 +40,6 @@ class ImportCommand extends Command
         }
 
         $io->success('Looks good.');
-
-        if (!$credentialsFileExists && $io->confirm('Would you like to save these?')) {
-            file_put_contents('credentials', "$username:$apiKey");
-            $io->success('Saved for next time!');
-        };
-
 
         // which account would you like to use?
         $accounts = $this->lookupAccounts($username, $apiKey);
