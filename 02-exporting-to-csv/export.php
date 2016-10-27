@@ -1,7 +1,10 @@
-<?php require 'vendor/autoload.php';
+<?php
+
+require 'vendor/autoload.php';
 
 use GuzzleHttp\Client;
 use League\Csv\Writer;
+use function GuzzleHttp\Promise\settle;
 
 $username = 'your email address here';
 $apikey = 'your api key here';
@@ -28,35 +31,41 @@ $itemListResponse = $client->get('/items', [
 
 $items = json_decode($itemListResponse->getBody(), true)['data'];
 
-fopen('content.csv', "w");
+
+/*
+ * Asynchronously fetch each Item
+ */
+$promises = array_map(function ($item) use ($client) {
+    return $client->getAsync('/items/' . $item['id']);
+}, $items);
+
+$promiseResponses = settle($promises)->wait();
+
+$encodedItemResponses = array_column($promiseResponses, 'value');
+
+$itemConfigs = array_map(function ($response) {
+    return json_decode($response->getBody(), true)['data']['config'];
+}, $encodedItemResponses);
+
+$headings = array_column($itemConfigs[0][0]['elements'], 'label');
+
+/*
+ * Extract the 'value' from each of the Item elements
+ */
+$content = array_map(function ($itemConfig) {
+    return array_column($itemConfig[0]['elements'], 'value');
+}, $itemConfigs);
+
+/*
+ * Create the CSV File
+ */
+
+touch('content.csv');
 
 $csv = Writer::createFromPath('content.csv');
 
-$headings = [];
-$content = [];
+$csv->insertOne($headings);
 
-foreach ($items as $item) {
-    $itemResponse = $client->get('/items/' . $item['id']);
-
-    $config = json_decode($itemResponse->getBody(), true)['data']['config'];
-
-    $item = [];
-
-    foreach ($config[0]['elements'] as $element) {
-        $item[] = $element['value'];
-    }
-
-    $content[] = $item;
-
-    if (empty($headings)) {
-        foreach ($config[0]['elements'] as $element) {
-            $headings[] = $element['label'];
-        }
-
-        $csv->insertOne($headings);
-    }
-}
-
-foreach ($content as $item) {
+array_walk($content, function ($item) use ($csv) {
     $csv->insertOne($item);
-}
+});
