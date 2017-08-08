@@ -51,6 +51,30 @@ Next choose a CSS selector - e.g. 'article' or css class '.content', '#main-cont
 
 Then confirm and watch the content be pulled and posted back to GatherContent through the public API.
 
+## FAQ
+
+### Why are HTML tags not imported?
+
+If you look at [line 14 of ContentScraper](https://github.com/gathercontent/api-examples/blob/82dda9600e74ab549c5923838d2fca0f39bc74c1/04-import-from-sitemap/src/ContentScraper.php#L14) you will see we are only scraping the _text_ of the element, not the _HTML_. You can change this to `return $filtered->html();` instead if you wish to import HTML. 
+Note that some uncommon HTML tags may still not be available, and you will have to contact support@gathercontent.com to add these to your project.
+
+### How can I avoid all my content being imported as one blob?
+
+The `ImportCommand` is configured to only import two fields - the page `<title>` and a dynamically scraped element from the [$cssSelector submitted by the user](https://github.com/gathercontent/api-examples/blob/82dda9600e74ab549c5923838d2fca0f39bc74c1/04-import-from-sitemap/src/ImportCommand.php#L104) as you can [see here](https://github.com/gathercontent/api-examples/blob/82dda9600e74ab549c5923838d2fca0f39bc74c1/04-import-from-sitemap/src/ImportCommand.php#L118).
+
+If you have a consistent template that you are importing from, you could edit this file and change the array. For example, say you had a `<title>`, `<h1>`, `<div id="main">`, and `<p class="call-to-action">` on every field that you wanted to import - you can just override the second argument given to `ContentToFieldMaper->mapContentToFields()` like so:
+
+```
+$map = [
+  'Page Title'     => 'title',
+  'Heading'        => 'h1',
+  'Main Content'   => 'div#main',
+  'Call to Action' => 'p.call-to-action'
+];
+
+$contentToFieldMapper->mapToFields($html, $map);
+```
+
 ## Running tests
 
 To run the phpspec test suite run
